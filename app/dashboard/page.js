@@ -32,6 +32,8 @@ const Page = () => {
                 setPendingCount(data.salesOrders.length);
                 setLocalCount(local);
                 setExteriorCount(exterior);
+
+                console.log(data.salesOrders)
             }
         } catch (error) {
             console.error('Error al cargar los pedidos:', error);
@@ -108,12 +110,36 @@ const Page = () => {
 
     // Función para calcular la diferencia de tiempo en formato legible
     const calculateTimeElapsed = (dateOrder) => {
+        // Asumimos que la fecha viene en formato '15/10/2024, 01:46:10 p.m.' (es-MX)
+        // Descomponemos la fecha en partes de día, mes, año y hora
+        const [datePart, timePart] = dateOrder.split(',').map(part => part.trim());
+        
+        // Dividimos la fecha en día, mes y año
+        const [day, month, year] = datePart.split('/');
+    
+        // Verificamos si la hora es AM o PM
+        let [time, period] = timePart.split(' '); // "01:46:10 p.m." -> ["01:46:10", "p.m."]
+        let [hours, minutes, seconds] = time.split(':');
+    
+        // Convertir a formato de 24 horas si es PM y la hora no es 12
+        if (period.toLowerCase() === 'p.m.' && hours !== '12') {
+            hours = parseInt(hours, 10) + 12;
+        } 
+        // Convertir a 0 horas si es AM y la hora es 12
+        else if (period.toLowerCase() === 'a.m.' && hours === '12') {
+            hours = '00';
+        }
+    
+        // Construimos el formato ISO (YYYY-MM-DDTHH:MM:SS)
+        const isoDateString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        
+        // Convertimos la fecha al objeto Date
+        const orderDate = new Date(isoDateString);
         const now = new Date(); // Fecha actual
-        const orderDate = new Date(dateOrder); // Fecha de creación de la orden
-
+    
         const diffInMilliseconds = now - orderDate; // Diferencia en milisegundos
         const diffInMinutes = Math.floor(diffInMilliseconds / (1000 * 60)); // Convertir a minutos
-
+    
         if (diffInMinutes < 60) {
             return `${diffInMinutes} min`; // Mostrar minutos si es menor a 60
         } else if (diffInMinutes < 1440) {
@@ -124,6 +150,8 @@ const Page = () => {
             return `${diffInDays} días`;
         }
     };
+    
+    
 
     // Función para calcular el estado en base al tiempo transcurrido
     const getOrderStatus = (orderDate) => {
@@ -205,7 +233,7 @@ const Page = () => {
                                                     </span>
                                                 </td>
                                                 <td className="py-6">{order.partner_name}</td>
-                                                <td className="py-6">{new Date(order.date_order).toLocaleString()}</td>
+                                                <td className="py-6">{order.date_order}</td>
                                                 <td className="py-6">
                                                     {/* Badge con emoji para el tipo de envío */}
                                                     <div className="rounded-full font-semibold h-12 w-12 flex justify-center items-center">

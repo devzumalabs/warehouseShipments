@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { utcToZonedTime, format } from 'date-fns-tz';
 
 // Variables de entorno
 const odooUrl = process.env.ODOO_URL;
@@ -112,6 +113,39 @@ const fetchPickingDetails = async (sessionId, pickingIds) => {
   return pickingsData;
 };
 
+// Función para convertir UTC a la hora local de Tijuana de manera manual
+const convertUTCtoTijuanaTime = (dateString) => {
+
+  const date = new Date(dateString); // Crear el objeto Date desde la cadena en UTC
+
+  // Verificar si el objeto Date es válido
+  if (isNaN(date)) {
+    console.error(`Orden: ${orderName}, Fecha inválida: ${dateString}`);
+    return 'Fecha inválida';
+  }
+
+  // Restar manualmente las 7 horas de diferencia entre UTC y Tijuana
+  const tijuanaOffset = -7; // Tijuana es UTC-7
+  const tijuanaTime = new Date(date.getTime() + tijuanaOffset * 60 * 60 * 1000); // Ajustamos la hora
+
+  // Opciones para formatear la fecha en un formato legible
+  const options = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true // Para formato de 12 horas con AM/PM
+  };
+
+  // Usar Intl.DateTimeFormat para dar formato a la fecha ajustada
+  const formatter = new Intl.DateTimeFormat('es-MX', options);
+  const formattedDate = formatter.format(tijuanaTime);
+
+  return formattedDate;
+};
+
 // Función para obtener las órdenes de venta sin número de guía
 const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
   try {
@@ -147,7 +181,6 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
 
         // Verificar si alguna línea de producto tiene el nombre "Envío local"
         const isLocal = orderLines.some(line => line.name && line.name.toLowerCase().includes('envío local'));
-
         // Clasificación de la entrega
         const deliveryType = isLocal ? 'Envío local' : 'Envío exterior';
 
@@ -157,7 +190,7 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
           partner_name: sale.partner_id[1],
           subtotal: sale.amount_untaxed,
           total: sale.amount_total,
-          date_order: sale.date_order,
+          date_order: convertUTCtoTijuanaTime(sale.date_order),
           website_name: sale.website_id[1], // Nombre del sitio web
           delivery_type: deliveryType // Clasificación de la entrega
         };
