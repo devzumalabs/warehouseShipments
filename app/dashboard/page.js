@@ -184,20 +184,39 @@ const Page = () => {
         }
     };
 
-    // Función para calcular el estado en base al tiempo transcurrido
-    const getOrderStatus = (orderDate) => {
-        const now = new Date();
-        const orderCreationDate = new Date(orderDate);
-        const timeDifferenceInHours = (now - orderCreationDate) / (1000 * 60 * 60); // Diferencia en horas
-
-        if (timeDifferenceInHours < 2) {
+    const getOrderStatus = (dateOrder) => {
+        const diffInMinutes = calculateTimeElapsedInMinutes(dateOrder); // Usamos la misma lógica para calcular minutos
+    
+        if (diffInMinutes < 120) {  // Menos de 2 horas
             return { status: 'En tiempo', style: 'bg-green-200 text-green-500' };
-        } else if (timeDifferenceInHours >= 2 && timeDifferenceInHours < 6) {
-            return { status: 'Moderado', style: 'bg-orange-200 text-orange-200' };
-        } else {
+        } else if (diffInMinutes >= 120 && diffInMinutes < 360) {  // Entre 2 y 6 horas
+            return { status: 'Moderado', style: 'bg-orange-200 text-orange-500' };
+        } else {  // Más de 6 horas
             return { status: 'Retrasado', style: 'bg-red-200 text-red-500' };
         }
     };
+    
+    // Función para calcular la diferencia de tiempo en minutos (reutilizada en el estado)
+    const calculateTimeElapsedInMinutes = (dateOrder) => {
+        const [datePart, timePart] = dateOrder.split(',').map(part => part.trim());
+        const [day, month, year] = datePart.split('/');
+        let [time, period] = timePart.split(' ');
+        let [hours, minutes, seconds] = time.split(':');
+    
+        if (period.toLowerCase() === 'p.m.' && hours !== '12') {
+            hours = parseInt(hours, 10) + 12;
+        } else if (period.toLowerCase() === 'a.m.' && hours === '12') {
+            hours = '00';
+        }
+    
+        const isoDateString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        const orderDate = new Date(isoDateString);
+        const now = new Date();
+    
+        const diffInMilliseconds = now - orderDate; // Diferencia en milisegundos
+        const diffInMinutes = Math.floor(diffInMilliseconds / (1000 * 60)); // Convertir a minutos
+        return diffInMinutes; // Devolvemos la diferencia en minutos
+    };    
 
     //Cerrar sesión
     const handleLogout = async (router) => {
