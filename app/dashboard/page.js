@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2'; // Importamos SweetAlert2
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/solid';
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from '../../firebase';
+import { auth, db } from '../../firebase';
 import { BeatLoader } from 'react-spinners';
 
 const Page = () => {
@@ -19,15 +20,44 @@ const Page = () => {
     const router = useRouter();  // Usamos useRouter para redireccionar
     const [isAuthenticated, setIsAuthenticated] = useState(null);  // Nuevo estado para verificar autenticación
     const [opacity, setOpacity] = useState(0);  // Estado para controlar la opacidad
+    const [connectedUser, setConnectedUser] = useState("");  // Estado para guardar el nombre completo del usuario
+
+    const fetchUserFullName = async (email) => {
+        try {
+            console.log("Buscando usuario con el correo:", email);
+
+            // Crear una consulta a la colección 'users' donde el campo 'email' coincida con el del usuario autenticado
+            const q = query(collection(db, "users"), where("email", "==", email));
+
+            // Obtener los documentos que coincidan con la consulta
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                // Obtener el full_name del primer documento que coincida
+                const userDoc = querySnapshot.docs[0].data();
+                return userDoc.full_name;
+            } else {
+                console.log('No se encontró el usuario con el correo proporcionado.');
+                return null;
+            }
+        } catch (error) {
+            console.error("Error al obtener el nombre completo:", error);
+            return null;
+        }
+    };
 
     // Proteger la página verificando si el usuario está autenticado
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (!user) {
                 setIsAuthenticated(false); // Usuario no autenticado
                 router.push('/');          // Redirige al login
             } else {
                 setIsAuthenticated(true);  // Usuario autenticado
+
+                // Asegúrate de que esta parte sea async
+                const fullName = await fetchUserFullName(user.email);
+                setConnectedUser(fullName);  // Guardar el nombre completo en el estado
             }
         });
         return () => unsubscribe();
@@ -186,7 +216,7 @@ const Page = () => {
 
     const getOrderStatus = (dateOrder) => {
         const diffInMinutes = calculateTimeElapsedInMinutes(dateOrder); // Usamos la misma lógica para calcular minutos
-    
+
         if (diffInMinutes < 120) {  // Menos de 2 horas
             return { status: 'En tiempo', style: 'bg-green-200 text-green-500' };
         } else if (diffInMinutes >= 120 && diffInMinutes < 360) {  // Entre 2 y 6 horas
@@ -195,54 +225,57 @@ const Page = () => {
             return { status: 'Retrasado', style: 'bg-red-200 text-red-500' };
         }
     };
-    
+
     // Función para calcular la diferencia de tiempo en minutos (reutilizada en el estado)
     const calculateTimeElapsedInMinutes = (dateOrder) => {
         const [datePart, timePart] = dateOrder.split(',').map(part => part.trim());
         const [day, month, year] = datePart.split('/');
         let [time, period] = timePart.split(' ');
         let [hours, minutes, seconds] = time.split(':');
-    
+
         if (period.toLowerCase() === 'p.m.' && hours !== '12') {
             hours = parseInt(hours, 10) + 12;
         } else if (period.toLowerCase() === 'a.m.' && hours === '12') {
             hours = '00';
         }
-    
+
         const isoDateString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
         const orderDate = new Date(isoDateString);
         const now = new Date();
-    
+
         const diffInMilliseconds = now - orderDate; // Diferencia en milisegundos
         const diffInMinutes = Math.floor(diffInMilliseconds / (1000 * 60)); // Convertir a minutos
         return diffInMinutes; // Devolvemos la diferencia en minutos
-    };    
+    };
 
     //Cerrar sesión
     const handleLogout = async (router) => {
         try {
-          await signOut(auth);  // Cierra la sesión de Firebase
-          router.push('/');     // Redirige al usuario al login o página principal
+            await signOut(auth);  // Cierra la sesión de Firebase
+            router.push('/');     // Redirige al usuario al login o página principal
         } catch (error) {
-          console.error('Error al cerrar sesión:', error);
+            console.error('Error al cerrar sesión:', error);
         }
     };
 
     return (
         isAuthenticated && (
-            <div className="w-screen h-screen">
+            <div className="w-full h-screen">
                 <div className="container m-auto py-6">
-                    <div className="flex items-center justify-between pb-4">
-                        <h2 className="text-gray-700 text-2xl font-semibold">Resumen de envíos</h2>
-                        <svg 
-                            xmlns="http://www.w3.org/2000/svg" 
-                            fill="none" viewBox="0 0 24 24" 
-                            strokeWidth="1.5" 
-                            stroke="currentColor" 
-                            className="size-7 text-gray-700 hover:cursor-pointer"
-                            onClick={() => handleLogout(router)}
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
+                    <div className="flex items-center justify-between pb-2">
+                        <div>
+                            <h2 className="text-gray-700 text-1xl font-semibold">{connectedUser ? `Hola, ${connectedUser}` : 'Cargando...'}</h2>
+                            <h2 className="text-gray-700 text-2xl font-semibold">Resumen de envíos</h2>
+                        </div>
+                        <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24"
+                                strokeWidth="1.5"
+                                stroke="currentColor"
+                                className="size-7 text-gray-700 hover:cursor-pointer"
+                                onClick={() => handleLogout(router)}
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
                         </svg>
                     </div>
                     <div className="flex w-full gap-5">
@@ -271,7 +304,7 @@ const Page = () => {
                             </h2>
                         </div>
                     </div>
-                    <h2 className="text-gray-700 text-2xl pt-10 pb-4 font-semibold">Historial de envíos</h2>
+                    <h2 className="text-gray-700 text-2xl pt-10 pb-2 font-semibold">Historial de envíos</h2>
                     <div className={`flex-col rounded-3xl py-3 px-12 bg-white overflow-hidden h-[540px] flex ${isLoading ? 'justify-center items-center' : 'justify-between'}`}>
                         {isLoading ? (
                             <BeatLoader color="#0ea5e9" size={20} />
@@ -289,7 +322,7 @@ const Page = () => {
                                             <th className="py-2">Estado</th>
                                         </tr>
                                     </thead>
-                                    <tbody 
+                                    <tbody
                                         className={`transition-opacity duration-300`}
                                         style={{ opacity: opacity }}>
                                         {currentOrders.map((order, index) => {

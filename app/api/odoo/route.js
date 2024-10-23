@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { utcToZonedTime, format } from 'date-fns-tz';
 
 // Variables de entorno
 const odooUrl = process.env.ODOO_URL;
@@ -99,15 +98,19 @@ const fetchData = async (sessionId, model, method, domain = [], fields = [], ret
 };
 
 // Función para obtener los detalles de los traslados (stock.picking)
-const fetchPickingDetails = async (sessionId, pickingIds) => {
-  if (!pickingIds || pickingIds.length === 0) return [];
+const fetchPickingDetails = async (sessionId, saleName) => {
+  if (!saleName) return [];
 
+  // Ajusta el filtro para asegurarte de excluir los traslados en 'done' o 'cancel'
   const pickingsData = await fetchData(
     sessionId,
     'stock.picking',
     'search_read',
-    [['id', 'in', pickingIds]],
-    ['carrier_tracking_ref']
+    [
+      ['origin', '=', saleName], // Filtrar por el origen de la orden de venta
+      ['state', 'not in', ['done', 'cancel']] // Excluir 'done' y 'cancel'
+    ],
+    ['origin', 'state'] // Eliminamos 'carrier_tracking_ref'
   );
 
   return pickingsData;
@@ -115,7 +118,6 @@ const fetchPickingDetails = async (sessionId, pickingIds) => {
 
 // Función para convertir UTC a la hora local de Tijuana de manera manual
 const convertUTCtoTijuanaTime = (dateString) => {
-
   const date = new Date(dateString); // Crear el objeto Date desde la cadena en UTC
 
   // Verificar si el objeto Date es válido
@@ -146,7 +148,7 @@ const convertUTCtoTijuanaTime = (dateString) => {
   return formattedDate;
 };
 
-// Función para obtener las órdenes de venta sin número de guía
+// Función para obtener las órdenes de venta con traslados pendientes
 const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
   try {
     const salesDomain = [
@@ -162,14 +164,16 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
     }
 
     const filteredSales = await Promise.all(salesData.map(async (sale) => {
-      // Obtener los detalles de stock.picking (donde está el número de rastreo)
-      const pickings = await fetchPickingDetails(sessionId, sale.picking_ids);
+      // Obtener los detalles de stock.picking
+      const pickings = await fetchPickingDetails(sessionId, sale.name);
 
-      // Verificar si hay alguna referencia de rastreo en stock.picking
-      const hasTrackingRef = pickings.some(picking => picking.carrier_tracking_ref && picking.carrier_tracking_ref.trim() !== '');
+      // Verificar si alguna entrega no ha sido completada (state !== 'done' && state !== 'cancel')
+      const hasPendingState = pickings.length > 0;
 
-      // Solo regresar las órdenes que NO tienen número de rastreo (carrier_tracking_ref)
-      if (!hasTrackingRef && sale.amount_total > 0) {
+      //console.log('Detalles del picking:', pickings);
+
+      // Regresar solo las órdenes que tienen traslados pendientes
+      if (hasPendingState && sale.amount_total > 0) {
         // Obtener las líneas de producto de la orden de venta para determinar el tipo de entrega
         const orderLines = await fetchData(
           sessionId,
@@ -198,8 +202,7 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
 
       return null;
     }));
-
-    // Retorna solo las órdenes que no tengan número de rastreo y cuyo total sea mayor que 0
+    // Retorna solo las órdenes que tengan traslados pendientes y cuyo total sea mayor que 0
     return filteredSales.filter(order => order !== null);
   } catch (error) {
     console.error('Error al procesar las órdenes de venta:', error);
@@ -224,7 +227,7 @@ export async function GET(request) {
 
     const websiteIds = websiteData.map(website => website.id);
 
-    // Obtener las órdenes de venta sin número de guía y con total mayor a 0 para los sitios web especificados
+    // Obtener las órdenes de venta con traslados pendientes para los sitios web especificados
     const salesOrders = await fetchSalesOrdersWithoutTracking(sessionId, websiteIds);
 
     if (!salesOrders || salesOrders.length === 0) {
