@@ -24,7 +24,7 @@ const Page = () => {
 
     const fetchUserFullName = async (email) => {
         try {
-            console.log("Buscando usuario con el correo:", email);
+            //console.log("Buscando usuario con el correo:", email);
 
             // Crear una consulta a la colección 'users' donde el campo 'email' coincida con el del usuario autenticado
             const q = query(collection(db, "users"), where("email", "==", email));
@@ -37,7 +37,7 @@ const Page = () => {
                 const userDoc = querySnapshot.docs[0].data();
                 return userDoc.full_name;
             } else {
-                console.log('No se encontró el usuario con el correo proporcionado.');
+                //console.log('No se encontró el usuario con el correo proporcionado.');
                 return null;
             }
         } catch (error) {
@@ -82,7 +82,7 @@ const Page = () => {
                 setLocalCount(local);
                 setExteriorCount(exterior);
 
-                console.log(data.salesOrders)
+                //console.log(data.salesOrders)
             }
         } catch (error) {
             console.error('Error al cargar los pedidos:', error);
