@@ -245,7 +245,7 @@ export async function GET(request) {
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
 
-    return NextResponse.json({ message: "Request reached the server" }, { status: 200 });
+    return response;
     
   } catch (error) {
     console.error('Error al procesar la solicitud GET:', error);
