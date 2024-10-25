@@ -215,6 +215,8 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
 
 // Función para manejar solicitudes GET
 export async function GET(request) {
+  console.log("GET request received");
+  
   try {
     const sessionId = await authenticate();
 
@@ -243,7 +245,8 @@ export async function GET(request) {
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
 
-    return response;
+    return NextResponse.json({ message: "Request reached the server" }, { status: 200 });
+    
   } catch (error) {
     console.error('Error al procesar la solicitud GET:', error);
     return NextResponse.json({ error: 'Internal Server Error', message: error.message }, { status: 500 });
