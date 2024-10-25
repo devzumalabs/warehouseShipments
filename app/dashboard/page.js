@@ -171,6 +171,63 @@ const Page = () => {
         });
     };
 
+    //Funcion para calcular el estado de la entrega
+    const calculateWorkTimeElapsed = (dateOrder) => {
+        // Parsear la fecha y ajustar a la zona horaria de Tijuana
+        const [datePart, timePart] = dateOrder.split(',').map(part => part.trim());
+        const [day, month, year] = datePart.split('/');
+        let [time, period] = timePart.split(' '); 
+        let [hours, minutes, seconds] = time.split(':');
+    
+        // Convertir a formato de 24 horas si es PM y la hora no es 12
+        if (period.toLowerCase() === 'p.m.' && hours !== '12') {
+            hours = parseInt(hours, 10) + 12;
+        } else if (period.toLowerCase() === 'a.m.' && hours === '12') {
+            hours = '00';
+        }
+    
+        // Crear la fecha de la orden en formato de Tijuana (UTC-7)
+        const orderDate = new Date(`${year}-${month}-${day}T${hours}:${minutes}:${seconds}-07:00`);
+        const now = new Date();
+    
+        if (orderDate > now) return 0;
+    
+        let elapsedMinutes = 0;
+        let currentDate = new Date(orderDate);
+    
+        // Ajustar si cae en fin de semana
+        if (currentDate.getDay() === 6) {  // Sábado
+            currentDate.setDate(currentDate.getDate() + 2);
+            currentDate.setHours(8, 0, 0, 0);
+        } else if (currentDate.getDay() === 0) {  // Domingo
+            currentDate.setDate(currentDate.getDate() + 1);
+            currentDate.setHours(8, 0, 0, 0);
+        } else {
+            // Si es un día laboral, ajustamos dentro del horario de 8 a.m. a 3 p.m.
+            if (currentDate.getHours() < 8) {
+                currentDate.setHours(8, 0, 0, 0);
+            } else if (currentDate.getHours() >= 15) {
+                currentDate.setDate(currentDate.getDate() + 1);
+                currentDate.setHours(8, 0, 0, 0);
+            }
+        }
+    
+        // Contamos el tiempo solo dentro del horario laboral
+        while (currentDate < now) {
+            // Solo de lunes a viernes, entre 8 a.m. y 3 p.m.
+            if (currentDate.getDay() >= 1 && currentDate.getDay() <= 5 && 
+                currentDate.getHours() >= 8 && currentDate.getHours() < 15) {
+                elapsedMinutes++;
+            }
+            currentDate.setMinutes(currentDate.getMinutes() + 1);
+        }
+    
+        // Log para verificar minutos transcurridos en horario laboral y fecha de orden procesada
+        //console.log("Tiempo laboral transcurrido (minutos):", elapsedMinutes, "Fecha de orden:", dateOrder);
+    
+        return elapsedMinutes;
+    };
+    
     // Función para calcular la diferencia de tiempo en formato legible
     const calculateTimeElapsed = (dateOrder) => {
         // Asumimos que la fecha viene en formato '15/10/2024, 01:46:10 p.m.' (es-MX)
@@ -215,37 +272,15 @@ const Page = () => {
     };
 
     const getOrderStatus = (dateOrder) => {
-        const diffInMinutes = calculateTimeElapsedInMinutes(dateOrder); // Usamos la misma lógica para calcular minutos
-
-        if (diffInMinutes < 120) {  // Menos de 2 horas
+        const diffInMinutes = calculateWorkTimeElapsed(dateOrder);
+    
+        if (diffInMinutes < 120) {
             return { status: 'En tiempo', style: 'bg-green-200 text-green-500' };
-        } else if (diffInMinutes >= 120 && diffInMinutes < 360) {  // Entre 2 y 6 horas
+        } else if (diffInMinutes >= 120 && diffInMinutes < 360) {
             return { status: 'Moderado', style: 'bg-orange-200 text-orange-500' };
-        } else {  // Más de 6 horas
+        } else {
             return { status: 'Retrasado', style: 'bg-red-200 text-red-500' };
         }
-    };
-
-    // Función para calcular la diferencia de tiempo en minutos (reutilizada en el estado)
-    const calculateTimeElapsedInMinutes = (dateOrder) => {
-        const [datePart, timePart] = dateOrder.split(',').map(part => part.trim());
-        const [day, month, year] = datePart.split('/');
-        let [time, period] = timePart.split(' ');
-        let [hours, minutes, seconds] = time.split(':');
-
-        if (period.toLowerCase() === 'p.m.' && hours !== '12') {
-            hours = parseInt(hours, 10) + 12;
-        } else if (period.toLowerCase() === 'a.m.' && hours === '12') {
-            hours = '00';
-        }
-
-        const isoDateString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-        const orderDate = new Date(isoDateString);
-        const now = new Date();
-
-        const diffInMilliseconds = now - orderDate; // Diferencia en milisegundos
-        const diffInMinutes = Math.floor(diffInMilliseconds / (1000 * 60)); // Convertir a minutos
-        return diffInMinutes; // Devolvemos la diferencia en minutos
     };
 
     //Cerrar sesión
