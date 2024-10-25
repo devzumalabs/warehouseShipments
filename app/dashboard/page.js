@@ -71,7 +71,10 @@ const Page = () => {
             const data = await response.json();
 
             if (data.salesOrders) {
-                setOrders(data.salesOrders);
+                // Filtrar órdenes que no tengan "Error Odoo" en el campo `note`
+                const filteredOrders = data.salesOrders.filter(order => !order.note?.includes("Error Odoo"));
+
+                setOrders(filteredOrders);
 
                 // Calcular el total de envíos locales y exteriores
                 const local = data.salesOrders.filter(order => order.delivery_type === 'Envío local').length;
@@ -82,7 +85,8 @@ const Page = () => {
                 setLocalCount(local);
                 setExteriorCount(exterior);
 
-                //console.log(data.salesOrders)
+                console.log(filteredOrders);
+
             }
         } catch (error) {
             console.error('Error al cargar los pedidos:', error);

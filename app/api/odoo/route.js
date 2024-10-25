@@ -133,7 +133,7 @@ const fetchPickingDetails = async (sessionId, saleName) => {
       ['origin', '=', saleName],
       ['state', 'not in', ['done', 'cancel']],
     ],
-    ['origin', 'state']
+    ['origin', 'state', 'note']
   );
 
   return pickingsData;
@@ -180,6 +180,8 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
       const pickings = await fetchPickingDetails(sessionId, sale.name);
       const hasPendingState = pickings.length > 0;
 
+      const note = pickings[0]?.note || '';
+
       if (hasPendingState && sale.amount_total > 0) {
         const orderLines = await fetchData(
           sessionId,
@@ -200,7 +202,8 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
           total: sale.amount_total,
           date_order: convertUTCtoTijuanaTime(sale.date_order),
           website_name: sale.website_id[1],
-          delivery_type: deliveryType
+          delivery_type: deliveryType,
+          note
         };
       }
       return null;
