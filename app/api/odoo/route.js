@@ -162,6 +162,21 @@ const convertUTCtoTijuanaTime = (dateString) => {
   return formatter.format(tijuanaTime);
 };
 
+// Función para obtener la ciudad del contacto
+const getPartnerCity = async (sessionId, partnerId) => {
+  if (!partnerId) return null;
+
+  const partnerData = await fetchData(
+    sessionId,
+    'res.partner',
+    'search_read',
+    [['id', '=', partnerId]], // Filtro por ID del contacto
+    ['city'] // Solo obtenemos el campo 'city'
+  );
+
+  return partnerData.length > 0 ? partnerData[0].city : null;
+};
+
 // Función para obtener las órdenes de venta con traslados pendientes
 const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
   try {
@@ -170,7 +185,16 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
       ['state', 'in', ['sale', 'done']],
     ];
 
-    const salesData = await fetchData(sessionId, 'sale.order', 'search_read', salesDomain, ['id', 'name', 'amount_untaxed', 'amount_total', 'date_order', 'partner_id', 'picking_ids', 'website_id']);
+    const salesData = await fetchData(sessionId, 'sale.order', 'search_read', salesDomain, [
+      'id', 
+      'name', 
+      'amount_untaxed', 
+      'amount_total', 
+      'date_order', 
+      'partner_id', 
+      'picking_ids', 
+      'website_id'
+    ]);
 
     if (!salesData || salesData.length === 0) {
       return [];
@@ -191,8 +215,8 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
           ['name']
         );
 
-        const isLocal = orderLines.some(line => line.name && line.name.toLowerCase().includes('envío local'));
-        const deliveryType = isLocal ? 'Envío local' : 'Envío exterior';
+        const city = await getPartnerCity(sessionId, sale.partner_id[0]);
+        const deliveryType = city === 'Tijuana' ? 'Envío local' : 'Envío exterior';
 
         return {
           id: sale.name,
@@ -203,6 +227,7 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
           date_order: convertUTCtoTijuanaTime(sale.date_order),
           website_name: sale.website_id[1],
           delivery_type: deliveryType,
+          city,
           note
         };
       }

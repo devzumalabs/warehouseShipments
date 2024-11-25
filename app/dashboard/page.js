@@ -77,11 +77,11 @@ const Page = () => {
                 setOrders(filteredOrders);
 
                 // Calcular el total de envíos locales y exteriores
-                const local = data.salesOrders.filter(order => order.delivery_type === 'Envío local').length;
-                const exterior = data.salesOrders.filter(order => order.delivery_type === 'Envío exterior').length;
+                const local = filteredOrders.filter(order => order.delivery_type === 'Envío local').length;
+                const exterior = filteredOrders.filter(order => order.delivery_type === 'Envío exterior').length;
 
                 // Actualizar los contadores
-                setPendingCount(data.salesOrders.length);
+                setPendingCount(filteredOrders.length);
                 setLocalCount(local);
                 setExteriorCount(exterior);
 
