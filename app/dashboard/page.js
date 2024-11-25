@@ -103,7 +103,8 @@ const Page = () => {
 
             // Intervalo para actualizar el tiempo dinámicamente cada 10 minutos
             const interval = setInterval(() => {
-                setOrders(prevOrders => [...prevOrders]); // Fuerza una actualización del estado
+                fetchOrders();
+                //console.log('Actualizando dasboard sin refrescar')
             }, 600000); // 600,000 milisegundos = 10 minutos
 
             // Limpiar el intervalo cuando el componente se desmonte
