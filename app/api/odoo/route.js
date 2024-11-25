@@ -133,7 +133,7 @@ const fetchPickingDetails = async (sessionId, saleName) => {
     ['origin', 'state'] 
   );
 
-  console.debug('Datos de traslados obtenidos:', pickingsData);
+  //console.debug('Datos de traslados obtenidos:', pickingsData);
 
   return pickingsData;
 };
@@ -202,13 +202,13 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
     const filteredSales = await Promise.all(
       salesData.map(async (sale) => {
         const pickings = await fetchPickingDetails(sessionId, sale.name);
-        console.debug(`Traslados para la orden ${sale.name}:`, pickings);
+        //console.debug(`Traslados para la orden ${sale.name}:`, pickings);
 
         const hasPendingState = pickings.length > 0;
-        console.debug(`Estado pendiente para ${sale.name}:`, hasPendingState);
+        //console.debug(`Estado pendiente para ${sale.name}:`, hasPendingState);
 
         if (hasPendingState && sale.amount_total > 0) {
-          console.debug(`Incluir orden ${sale.name} con traslados pendientes:`, pickings);
+          //console.debug(`Incluir orden ${sale.name} con traslados pendientes:`, pickings);
           const orderLines = await fetchData(
             sessionId,
             'sale.order.line',
@@ -220,7 +220,7 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
           const city = await getPartnerCity(sessionId, sale.partner_id[0]);
           const deliveryType = city === 'Tijuana' ? 'Envío local' : 'Envío exterior';
 
-          console.debug(`Incluyendo orden ${sale.name} en el resultado.`);
+          //console.debug(`Incluyendo orden ${sale.name} en el resultado.`);
 
           return {
             id: sale.name,

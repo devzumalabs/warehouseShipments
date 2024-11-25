@@ -181,25 +181,25 @@ const Page = () => {
         // Parsear la fecha y ajustar a la zona horaria de Tijuana
         const [datePart, timePart] = dateOrder.split(',').map(part => part.trim());
         const [day, month, year] = datePart.split('/');
-        let [time, period] = timePart.split(' '); 
+        let [time, period] = timePart.split(' ');
         let [hours, minutes, seconds] = time.split(':');
-    
+
         // Convertir a formato de 24 horas si es PM y la hora no es 12
         if (period.toLowerCase() === 'p.m.' && hours !== '12') {
             hours = parseInt(hours, 10) + 12;
         } else if (period.toLowerCase() === 'a.m.' && hours === '12') {
             hours = '00';
         }
-    
+
         // Crear la fecha de la orden en formato de Tijuana (UTC-7)
         const orderDate = new Date(`${year}-${month}-${day}T${hours}:${minutes}:${seconds}-07:00`);
         const now = new Date();
-    
+
         if (orderDate > now) return 0;
-    
+
         let elapsedMinutes = 0;
         let currentDate = new Date(orderDate);
-    
+
         // Ajustar si cae en fin de semana
         if (currentDate.getDay() === 6) {  // Sábado
             currentDate.setDate(currentDate.getDate() + 2);
@@ -216,23 +216,23 @@ const Page = () => {
                 currentDate.setHours(8, 0, 0, 0);
             }
         }
-    
+
         // Contamos el tiempo solo dentro del horario laboral
         while (currentDate < now) {
             // Solo de lunes a viernes, entre 8 a.m. y 3 p.m.
-            if (currentDate.getDay() >= 1 && currentDate.getDay() <= 5 && 
+            if (currentDate.getDay() >= 1 && currentDate.getDay() <= 5 &&
                 currentDate.getHours() >= 8 && currentDate.getHours() < 15) {
                 elapsedMinutes++;
             }
             currentDate.setMinutes(currentDate.getMinutes() + 1);
         }
-    
+
         // Log para verificar minutos transcurridos en horario laboral y fecha de orden procesada
         //console.log("Tiempo laboral transcurrido (minutos):", elapsedMinutes, "Fecha de orden:", dateOrder);
-    
+
         return elapsedMinutes;
     };
-    
+
     // Función para calcular la diferencia de tiempo en formato legible
     const calculateTimeElapsed = (dateOrder) => {
         // Asumimos que la fecha viene en formato '15/10/2024, 01:46:10 p.m.' (es-MX)
@@ -278,7 +278,7 @@ const Page = () => {
 
     const getOrderStatus = (dateOrder) => {
         const diffInMinutes = calculateWorkTimeElapsed(dateOrder);
-    
+
         if (diffInMinutes < 120) {
             return { status: 'En tiempo', style: 'bg-green-200 text-green-500' };
         } else if (diffInMinutes >= 120 && diffInMinutes < 360) {
@@ -308,14 +308,14 @@ const Page = () => {
                             <h2 className="text-gray-700 text-2xl font-semibold">Resumen de envíos</h2>
                         </div>
                         <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none" viewBox="0 0 24 24"
-                                strokeWidth="1.5"
-                                stroke="currentColor"
-                                className="size-7 text-gray-700 hover:cursor-pointer"
-                                onClick={() => handleLogout(router)}
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none" viewBox="0 0 24 24"
+                            strokeWidth="1.5"
+                            stroke="currentColor"
+                            className="size-7 text-gray-700 hover:cursor-pointer"
+                            onClick={() => handleLogout(router)}
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
                         </svg>
                     </div>
                     <div className="flex w-full gap-5">
@@ -364,52 +364,62 @@ const Page = () => {
                                     </thead>
                                     <tbody
                                         className={`transition-opacity duration-300`}
-                                        style={{ opacity: opacity }}>
-                                        {currentOrders.map((order, index) => {
-                                            const deliveryTypeData = getDeliveryTypeStyle(order.delivery_type);
-                                            const odooLink = `https://zumalabs.odoo.com/web?debug=1#id=${order.id_link}&cids=1&menu_id=367&action=613&model=sale.order&view_type=form`;
-                                            const orderStatus = getOrderStatus(order.date_order);
-                                            return (
-                                                <tr
-                                                    key={index}
-                                                    className="border-b border-gray-200 hover:bg-[#f2f6f9] hover:cursor-pointer transition duration-300 ease-in-out"
-                                                    onClick={() => handleRowClick(odooLink)} // Alerta de confirmación antes de abrir el enlace
-                                                >
-                                                    <td className="py-6 text-500">
-                                                        <span className="text-sky-500 px-2 py-1 rounded-full font-semibold bg-sky-100">
-                                                            {order.id}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-6">{order.partner_name}</td>
-                                                    <td className="py-6">{order.date_order}</td>
-                                                    <td className="py-6">
-                                                        {/* Badge con emoji para el tipo de envío */}
-                                                        <div className="rounded-full font-semibold h-12 w-12 flex justify-center items-center">
-                                                            <p className="text-3xl">
-                                                                {deliveryTypeData.emoji}
-                                                            </p>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-6">
-                                                        {/* Estilos dinámicos según el sitio web */}
-                                                        <span
-                                                            className="px-2 py-1 rounded-full font-medium"
-                                                            style={getWebsiteStyle(order.website_name)}
-                                                        >
-                                                            {order.website_name === 'Limit-x Nutrition' ? 'Limit X Nutrition' : order.website_name}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-6">{calculateTimeElapsed(order.date_order)}</td>
-                                                    <td className="py-6">
-                                                        {/* Estado con badge y texto "Por definir" */}
-                                                        <span className={`px-2 py-1 rounded-full font-semibold ${orderStatus.style}`}>
-                                                            {orderStatus.status}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                                        style={{ opacity: opacity }}
+                                    >
+                                        {currentOrders.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="7" className="text-center py-6 text-gray-500">
+                                                    No hay envíos pendientes.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            currentOrders.map((order, index) => {
+                                                const deliveryTypeData = getDeliveryTypeStyle(order.delivery_type);
+                                                const odooLink = `https://zumalabs.odoo.com/web?debug=1#id=${order.id_link}&cids=1&menu_id=367&action=613&model=sale.order&view_type=form`;
+                                                const orderStatus = getOrderStatus(order.date_order);
+                                                return (
+                                                    <tr
+                                                        key={index}
+                                                        className="border-b border-gray-200 hover:bg-[#f2f6f9] hover:cursor-pointer transition duration-300 ease-in-out"
+                                                        onClick={() => handleRowClick(odooLink)} // Alerta de confirmación antes de abrir el enlace
+                                                    >
+                                                        <td className="py-6 text-500">
+                                                            <span className="text-sky-500 px-2 py-1 rounded-full font-semibold bg-sky-100">
+                                                                {order.id}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-6">{order.partner_name}</td>
+                                                        <td className="py-6">{order.date_order}</td>
+                                                        <td className="py-6">
+                                                            {/* Badge con emoji para el tipo de envío */}
+                                                            <div className="rounded-full font-semibold h-12 w-12 flex justify-center items-center">
+                                                                <p className="text-3xl">{deliveryTypeData.emoji}</p>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-6">
+                                                            {/* Estilos dinámicos según el sitio web */}
+                                                            <span
+                                                                className="px-2 py-1 rounded-full font-medium"
+                                                                style={getWebsiteStyle(order.website_name)}
+                                                            >
+                                                                {order.website_name === 'Limit-x Nutrition'
+                                                                    ? 'Limit X Nutrition'
+                                                                    : order.website_name}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-6">{calculateTimeElapsed(order.date_order)}</td>
+                                                        <td className="py-6">
+                                                            {/* Estado con badge y texto "Por definir" */}
+                                                            <span className={`px-2 py-1 rounded-full font-semibold ${orderStatus.style}`}>
+                                                                {orderStatus.status}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
                                     </tbody>
+
                                 </table>
                                 <div className="footer flex gap-2 justify-end pt-8 pb-4">
                                     {Array.from({ length: totalPages }, (_, index) => (
