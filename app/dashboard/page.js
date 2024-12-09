@@ -67,33 +67,25 @@ const Page = () => {
     const fetchOrders = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch('/api/odoo'); // Llamar a la API que configuramos previamente
+            const response = await fetch(`/api/odoo?_=${Date.now()}`);
+            if (!response.ok) {
+                throw new Error(`Error en la API: ${response.statusText}`);
+            }
             const data = await response.json();
-
+    
             if (data.salesOrders) {
-                // Filtrar órdenes que no tengan "Error Odoo" en el campo `note`
-                const filteredOrders = data.salesOrders.filter(order => !order.note?.includes("Error Odoo"));
-
-                setOrders(filteredOrders);
-
-                // Calcular el total de envíos locales y exteriores
-                const local = filteredOrders.filter(order => order.delivery_type === 'Envío local').length;
-                const exterior = filteredOrders.filter(order => order.delivery_type === 'Envío exterior').length;
-
-                // Actualizar los contadores
-                setPendingCount(filteredOrders.length);
-                setLocalCount(local);
-                setExteriorCount(exterior);
-
-                console.log(filteredOrders);
-
+                setOrders(data.salesOrders);
+                setPendingCount(data.salesOrders.length);
+                setLocalCount(data.salesOrders.filter(o => o.delivery_type === 'Envío local').length);
+                setExteriorCount(data.salesOrders.filter(o => o.delivery_type === 'Envío exterior').length);
             }
         } catch (error) {
-            console.error('Error al cargar los pedidos:', error);
+            console.error('Error al cargar los pedidos:', error.message);
+            Swal.fire('Error', 'No se pudo cargar la información.', 'error');
         } finally {
             setIsLoading(false);
         }
-    };
+    };    
 
     // Ejecutar la función cuando el componente se monta
     useEffect(() => {
