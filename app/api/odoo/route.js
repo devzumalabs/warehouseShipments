@@ -158,25 +158,24 @@ const fetchPickingDetails = async (sessionId, saleName) => {
 
 // Función para convertir UTC a la hora local de Tijuana de manera manual
 const convertUTCtoTijuanaTime = (dateString) => {
-  const date = new Date(dateString);
-  if (isNaN(date)) {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date)) return "Fecha inválida";
+
+    return new Intl.DateTimeFormat("es-MX", {
+      timeZone: "America/Tijuana",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }).format(date);
+  } catch (error) {
+    console.error("Error al convertir fecha:", error.message);
     return "Fecha inválida";
   }
-  const tijuanaOffset = -7;
-  const tijuanaTime = new Date(date.getTime() + tijuanaOffset * 60 * 60 * 1000);
-
-  const options = {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  };
-
-  const formatter = new Intl.DateTimeFormat("es-MX", options);
-  return formatter.format(tijuanaTime);
 };
 
 // Función para obtener la ciudad del contacto
@@ -226,40 +225,35 @@ const fetchSalesOrdersWithoutTracking = async (sessionId, websiteIds) => {
     const filteredSales = await Promise.all(
       salesData.map(async (sale) => {
         const pickings = await fetchPickingDetails(sessionId, sale.name);
-        //console.debug(`Traslados para la orden ${sale.name}:`, pickings);
-
         const hasPendingState = pickings.length > 0;
-        //console.debug(`Estado pendiente para ${sale.name}:`, hasPendingState);
 
-        if (hasPendingState && sale.amount_total > 0) {
-          //console.debug(`Incluir orden ${sale.name} con traslados pendientes:`, pickings);
-          const orderLines = await fetchData(
+        if (!hasPendingState || sale.amount_total <= 0) return null;
+
+        const [orderLines, city] = await Promise.all([
+          fetchData(
             sessionId,
             "sale.order.line",
             "search_read",
             [["order_id", "=", sale.id]],
             ["name"]
-          );
+          ),
+          getPartnerCity(sessionId, sale.partner_id[0]),
+        ]);
 
-          const city = await getPartnerCity(sessionId, sale.partner_id[0]);
-          const deliveryType =
-            city === "Tijuana" ? "Envío local" : "Envío exterior";
+        const deliveryType =
+          city === "Tijuana" ? "Envío local" : "Envío exterior";
 
-          //console.debug(`Incluyendo orden ${sale.name} en el resultado.`);
-
-          return {
-            id: sale.name,
-            id_link: sale.id,
-            partner_name: sale.partner_id[1],
-            subtotal: sale.amount_untaxed,
-            total: sale.amount_total,
-            date_order: convertUTCtoTijuanaTime(sale.date_order),
-            website_name: sale.website_id[1],
-            delivery_type: deliveryType,
-            city,
-          };
-        }
-        return null;
+        return {
+          id: sale.name,
+          id_link: sale.id,
+          partner_name: sale.partner_id[1],
+          subtotal: sale.amount_untaxed,
+          total: sale.amount_total,
+          date_order: convertUTCtoTijuanaTime(sale.date_order),
+          website_name: sale.website_id[1],
+          delivery_type: deliveryType,
+          city,
+        };
       })
     );
 
