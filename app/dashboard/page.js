@@ -447,7 +447,7 @@ const Page = () => {
                               </div>
                             </td>
                             <td className="py-6">
-                              {/* Estilos dinámicos según el sitio web */}
+                              {/* Estilos dinámicos según el sitio  */}
                               <span
                                 className="px-2 py-1 rounded-full font-medium"
                                 style={getWebsiteStyle(order.website_name)}
