@@ -73,34 +73,45 @@ const Page = () => {
   const fetchOrders = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/odoo"); // Llamar a la API que configuramos previamente
+
+      // Solicitud GET a la API
+      const response = await fetch(`/api/odoo?_=${Date.now()}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error en la API: ${response.statusText}`);
+      }
+
       const data = await response.json();
 
-      if (data.salesOrders) {
-        // Filtrar órdenes que no tengan "Error Odoo" en el campo `note`
-        const filteredOrders = data.salesOrders.filter(
-          (order) => !order.note?.includes("Error Odoo")
+      // Validación y actualización del estado
+      if (data.salesOrders && Array.isArray(data.salesOrders)) {
+        setOrders(data.salesOrders);
+
+        // Cálculos basados en el tipo de entrega
+        setPendingCount(data.salesOrders.length);
+        setLocalCount(
+          data.salesOrders.filter((o) => o.delivery_type === "Envío local")
+            .length
         );
-
-        setOrders(filteredOrders);
-
-        // Calcular el total de envíos locales y exteriores
-        const local = filteredOrders.filter(
-          (order) => order.delivery_type === "Envío local"
-        ).length;
-        const exterior = filteredOrders.filter(
-          (order) => order.delivery_type === "Envío exterior"
-        ).length;
-
-        // Actualizar los contadores
-        setPendingCount(filteredOrders.length);
-        setLocalCount(local);
-        setExteriorCount(exterior);
-
-        console.log(filteredOrders);
+        setExteriorCount(
+          data.salesOrders.filter((o) => o.delivery_type === "Envío exterior")
+            .length
+        );
+      } else {
+        console.warn("Datos inesperados recibidos:", data);
       }
     } catch (error) {
-      console.error("Error al cargar los pedidos:", error);
+      console.error("Error al cargar los pedidos:", error.message);
+      Swal.fire(
+        "Error",
+        "No se pudo cargar la información. Intenta nuevamente.",
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -113,13 +124,13 @@ const Page = () => {
       setOpacity(1); // Cambia la opacidad a 1 para hacer el "fade in"
 
       // Intervalo para actualizar el tiempo dinámicamente cada 10 minutos
-      const interval = setInterval(() => {
+      const intervalId = setInterval(() => {
         fetchOrders();
-        console.log("interval***************");
-      }, 60000); // 600,000 milisegundos = 10 minutos
+        //console.log('Actualizando dasboard sin refrescar')
+      }, 600000); // 600,000 milisegundos = 10 minutos
 
       // Limpiar el intervalo cuando el componente se desmonte
-      return () => clearInterval(interval);
+      return () => clearInterval(intervalId);
     }
   }, [isAuthenticated]);
 
@@ -133,7 +144,7 @@ const Page = () => {
     switch (websiteName) {
       case "Pure Form":
         return { backgroundColor: "#bfdbfe", color: "black" };
-      case "Limit-x Nutrition":
+      case "Limit X Nutrition":
         return { backgroundColor: "#fde68a", color: "black" };
       case "APX Energy":
         return { backgroundColor: "#BFFF6B", color: "black" };
@@ -398,58 +409,69 @@ const Page = () => {
                     className={`transition-opacity duration-300`}
                     style={{ opacity: opacity }}
                   >
-                    {currentOrders.map((order, index) => {
-                      const deliveryTypeData = getDeliveryTypeStyle(
-                        order.delivery_type
-                      );
-                      const odooLink = `https://zumalabs.odoo.com/web?debug=1#id=${order.id_link}&cids=1&menu_id=367&action=613&model=sale.order&view_type=form`;
-                      const orderStatus = getOrderStatus(order.date_order);
-                      return (
-                        <tr
-                          key={index}
-                          className="border-b border-gray-200 hover:bg-[#f2f6f9] hover:cursor-pointer transition duration-300 ease-in-out"
-                          onClick={() => handleRowClick(odooLink)} // Alerta de confirmación antes de abrir el enlace
+                    {currentOrders.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="7"
+                          className="text-center py-6 text-gray-500"
                         >
-                          <td className="py-6 text-500">
-                            <span className="text-sky-500 px-2 py-1 rounded-full font-semibold bg-sky-100">
-                              {order.id}
-                            </span>
-                          </td>
-                          <td className="py-6">{order.partner_name}</td>
-                          <td className="py-6">{order.date_order}</td>
-                          <td className="py-6">
-                            {/* Badge con emoji para el tipo de envío */}
-                            <div className="rounded-full font-semibold h-12 w-12 flex justify-center items-center">
-                              <p className="text-3xl">
-                                {deliveryTypeData.emoji}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="py-6">
-                            {/* Estilos dinámicos según el sitio web */}
-                            <span
-                              className="px-2 py-1 rounded-full font-medium"
-                              style={getWebsiteStyle(order.website_name)}
-                            >
-                              {order.website_name === "Limit-x Nutrition"
-                                ? "Limit X Nutrition"
-                                : order.website_name}
-                            </span>
-                          </td>
-                          <td className="py-6">
-                            {calculateTimeElapsed(order.date_order)}
-                          </td>
-                          <td className="py-6">
-                            {/* Estado con badge y texto "Por definir" */}
-                            <span
-                              className={`px-2 py-1 rounded-full font-semibold ${orderStatus.style}`}
-                            >
-                              {orderStatus.status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                          No hay envíos pendientes.
+                        </td>
+                      </tr>
+                    ) : (
+                      currentOrders.map((order, index) => {
+                        const deliveryTypeData = getDeliveryTypeStyle(
+                          order.delivery_type
+                        );
+                        const odooLink = `https://zumalabs.odoo.com/web?debug=1#id=${order.id_link}&cids=1&menu_id=367&action=613&model=sale.order&view_type=form`;
+                        const orderStatus = getOrderStatus(order.date_order);
+                        return (
+                          <tr
+                            key={index}
+                            className="border-b border-gray-200 hover:bg-[#f2f6f9] hover:cursor-pointer transition duration-300 ease-in-out"
+                            onClick={() => handleRowClick(odooLink)} // Alerta de confirmación antes de abrir el enlace
+                          >
+                            <td className="py-6 text-500">
+                              <span className="text-sky-500 px-2 py-1 rounded-full font-semibold bg-sky-100">
+                                {order.id}
+                              </span>
+                            </td>
+                            <td className="py-6">{order.partner_name}</td>
+                            <td className="py-6">{order.date_order}</td>
+                            <td className="py-6">
+                              {/* Badge con emoji para el tipo de envío */}
+                              <div className="rounded-full font-semibold h-12 w-12 flex justify-center items-center">
+                                <p className="text-3xl">
+                                  {deliveryTypeData.emoji}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="py-6">
+                              {/* Estilos dinámicos según el sitio web */}
+                              <span
+                                className="px-2 py-1 rounded-full font-medium"
+                                style={getWebsiteStyle(order.website_name)}
+                              >
+                                {order.website_name === "Limit X Nutrition"
+                                  ? "Limit X Nutrition"
+                                  : order.website_name}
+                              </span>
+                            </td>
+                            <td className="py-6">
+                              {calculateTimeElapsed(order.date_order)}
+                            </td>
+                            <td className="py-6">
+                              {/* Estado con badge y texto "Por definir" */}
+                              <span
+                                className={`px-2 py-1 rounded-full font-semibold ${orderStatus.style}`}
+                              >
+                                {orderStatus.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
                 <div className="footer flex gap-2 justify-end pt-8 pb-4">

@@ -1,7 +1,7 @@
 // firebase.js
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'; // Importa Firestore
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getFirestore } from "firebase/firestore"; // Importa Firestore
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
