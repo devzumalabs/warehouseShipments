@@ -127,7 +127,7 @@ const Page = () => {
       const intervalId = setInterval(() => {
         fetchOrders();
         //console.log('Actualizando dasboard sin refrescar')
-      }, 600000); // 600,000 milisegundos = 10 minutos
+      }, 100000); // 600,000 milisegundos = 10 minutos
 
       // Limpiar el intervalo cuando el componente se desmonte
       return () => clearInterval(intervalId);

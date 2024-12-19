@@ -12,11 +12,16 @@ if (!odooUrl || !dbName || !username || !password) {
   throw new Error("One or more environment variables are not defined");
 }
 
+// Configuración general
+const TIMEOUT = 5000; // Tiempo de espera en milisegundos
+const MAX_RETRIES = 3; // Número máximo de reintentos
+
+// Función para autenticarse en Odoo
 // Función para autenticarse en Odoo
 const authenticate = async () => {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000); // 5 segundos de timeout
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT);
 
     const response = await fetch(`${odooUrl}/web/session/authenticate`, {
       method: "POST",
@@ -48,6 +53,7 @@ const authenticate = async () => {
     const sessionId = response.headers
       .get("set-cookie")
       ?.match(/session_id=([^;]+)/)?.[1];
+
     if (!sessionId) {
       throw new Error("No se pudo obtener el session_id de la respuesta.");
     }
@@ -68,12 +74,12 @@ const fetchData = async (
   fields = [],
   retry = true
 ) => {
-  let retries = 3; // Número de intentos de reintento
+  let retries = MAX_RETRIES;
 
   while (retries > 0) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000); // 5 segundos de timeout
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT);
 
       const response = await fetch(`${odooUrl}/web/dataset/call_kw`, {
         method: "POST",
@@ -85,12 +91,10 @@ const fetchData = async (
           jsonrpc: "2.0",
           method: "call",
           params: {
-            model: model,
-            method: method,
+            model,
+            method,
             args: [domain],
-            kwargs: {
-              fields: fields,
-            },
+            kwargs: { fields },
           },
           id: Math.floor(Math.random() * 1000),
         }),
@@ -103,33 +107,22 @@ const fetchData = async (
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      if (response.headers.get("content-type")?.includes("application/json")) {
-        const data = await response.json();
-        if (data.error) {
-          if (data.error.data.message.includes("Session expired") && retry) {
-            const newSessionId = await authenticate();
-            return fetchData(
-              newSessionId,
-              model,
-              method,
-              domain,
-              fields,
-              false
-            );
-          }
-          throw new Error(data.error.data.message);
+      const data = await response.json();
+
+      if (data.error) {
+        if (data.error.data.message.includes("Session expired") && retry) {
+          const newSessionId = await authenticate();
+          return fetchData(newSessionId, model, method, domain, fields, false);
         }
-        return data.result;
-      } else {
-        throw new Error(
-          "La respuesta no es JSON, posiblemente sea un error HTML del servidor"
-        );
+        throw new Error(data.error.data.message);
       }
+
+      return data.result;
     } catch (error) {
       console.error(`Error en fetchData: ${error.message}`);
       retries -= 1;
       if (retries === 0) {
-        throw error; // Si los reintentos fallan, propaga el error
+        throw error;
       }
       console.log("Reintentando la solicitud a Odoo...");
     }
