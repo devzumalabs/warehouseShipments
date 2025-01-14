@@ -114,7 +114,7 @@ const Page = () => {
         switch (websiteName) {
             case 'Pure Form':
                 return { backgroundColor: '#bfdbfe', color: 'black' };
-            case 'Limit-x Nutrition':
+            case 'Limit-X Nutrition':
                 return { backgroundColor: '#fde68a', color: 'black' };
             case 'APX Energy':
                 return { backgroundColor: '#BFFF6B', color: 'black' };
@@ -394,8 +394,8 @@ const Page = () => {
                                                                 className="px-2 py-1 rounded-full font-medium"
                                                                 style={getWebsiteStyle(order.website_name)}
                                                             >
-                                                                {order.website_name === 'Limit-x Nutrition'
-                                                                    ? 'Limit X Nutrition'
+                                                                {order.website_name === 'Limit-X Nutrition'
+                                                                    ? 'Limit-X Nutrition'
                                                                     : order.website_name}
                                                             </span>
                                                         </td>
