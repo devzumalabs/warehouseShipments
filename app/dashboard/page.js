@@ -292,7 +292,7 @@ const Page = () => {
 
     return (
         isAuthenticated && (
-            <div className="w-full h-screen">
+            <div className="w-full h-screen px-6 sm:px-3">
                 <div className="container m-auto py-6">
                     <div className="flex items-center justify-between pb-2">
                         <div>
@@ -310,7 +310,7 @@ const Page = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
                         </svg>
                     </div>
-                    <div className="flex w-full gap-5">
+                    <div className="flex flex-col w-full sm:flex-row gap-5">
                         <div className="flex-1 min-h-52 rounded-3xl flex flex-col align-middle items-center justify-center bg-sky-500">
                             <p className="text-white uppercase font-medium text-sm">
                                 Envíos pendientes
@@ -337,7 +337,7 @@ const Page = () => {
                         </div>
                     </div>
                     <h2 className="text-gray-700 text-2xl pt-10 pb-2 font-semibold">Historial de envíos</h2>
-                    <div className={`flex-col rounded-3xl py-3 px-12 bg-white overflow-hidden h-[540px] flex ${isLoading ? 'justify-center items-center' : 'justify-between'}`}>
+                    <div className={`flex-col rounded-3xl py-3 px-12 bg-white overflow-scroll sm:overflow-hidden h-[540px] flex ${isLoading ? 'justify-center items-center' : 'justify-between'}`}>
                         {isLoading ? (
                             <BeatLoader color="#0ea5e9" size={20} />
                         ) : (
@@ -349,7 +349,7 @@ const Page = () => {
                                             <th className="py-2 min-w-[250px]">Cliente</th>
                                             <th className="py-2 min-w-[270px]">Fecha de creación</th>
                                             <th className="py-2">Tipo de envío</th>
-                                            <th className="py-2 min-w-[90px]">Sitio web</th>
+                                            <th className="py-2 min-w-[150px]">Sitio web</th>
                                             <th className="py-2">Tiempo de registro</th>
                                             <th className="py-2">Estado</th>
                                         </tr>
