@@ -367,7 +367,7 @@ const Page = () => {
                                         ) : (
                                             currentOrders.map((order, index) => {
                                                 const deliveryTypeData = getDeliveryTypeStyle(order.delivery_type);
-                                                const odooLink = `https://zumalabs.odoo.com/web?debug=1#id=${order.id_link}&cids=1&menu_id=367&action=613&model=sale.order&view_type=form`;
+                                                const odooLink = `https://www.zumalabs.com/odoo/sales/${order.id_link}`;
                                                 const orderStatus = getOrderStatus(order.date_order);
                                                 return (
                                                     <tr
