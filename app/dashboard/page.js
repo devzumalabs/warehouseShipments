@@ -443,10 +443,11 @@ const Page = () => {
                               {calculateTimeElapsed(order.date_order)}
                             </td>
                             <td className="py-6">
-                              {/* Estado con badge y texto "Por definir" */}
-                              <span
-                                className={`px-2 py-1 rounded-full font-semibold ${orderStatus.style}`}
-                              >
+                            <span
+                              className={`px-2 py-1 rounded-full inline-block font-semibold ${orderStatus.style} ${
+                                orderStatus.status === "Retrasado" ? "animate-shake" : ""
+                              }`}
+                            >
                                 {orderStatus.status}
                               </span>
                             </td>

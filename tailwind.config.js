@@ -11,6 +11,15 @@ module.exports = {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+      animation: {
+        shake: 'shake 0.4s infinite',
+      },
+      keyframes: {
+        shake: {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.05)" },
+        },
+      },
       screens: {
         sm: '640px',
         md: '768px',
