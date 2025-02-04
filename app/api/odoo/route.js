@@ -18,25 +18,21 @@ const authenticate = async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(`${odooUrl}/web/dataset/call_kw?_=${Date.now()}`, {
+    const response = await fetch(`${odooUrl}/web/session/authenticate?_=${Date.now()}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: `session_id=${sessionId}`,
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
-        method: "call",
         params: {
-          model,
-          method,
-          args: [domain],
-          kwargs: { fields, ...kwargs },
+          db: dbName,
+          login: username,
+          password: password,
         },
-        id: Math.floor(Math.random() * 1000),
       }),
       signal: controller.signal,
-    });    
+    });
 
     clearTimeout(timeout);
 
@@ -49,6 +45,7 @@ const authenticate = async () => {
       throw new Error(data.error.data.message);
     }
 
+    // Extraemos session_id de la cabecera "set-cookie"
     const sessionId = response.headers
       .get("set-cookie")
       ?.match(/session_id=([^;]+)/)?.[1];
