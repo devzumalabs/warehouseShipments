@@ -18,21 +18,25 @@ const authenticate = async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(`${odooUrl}/web/session/authenticate`, {
+    const response = await fetch(`${odooUrl}/web/dataset/call_kw?_=${Date.now()}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Cookie: `session_id=${sessionId}`,
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
+        method: "call",
         params: {
-          db: dbName,
-          login: username,
-          password: password,
+          model,
+          method,
+          args: [domain],
+          kwargs: { fields, ...kwargs },
         },
+        id: Math.floor(Math.random() * 1000),
       }),
       signal: controller.signal,
-    });
+    });    
 
     clearTimeout(timeout);
 
@@ -155,6 +159,7 @@ const convertUTCtoTijuanaTime = (dateString) => {
 export async function GET(request) {
   try {
     const sessionId = await authenticate();
+    console.log("✅ Autenticación exitosa, Session ID:", sessionId);
 
     const websiteData = await fetchData(
       sessionId,
@@ -249,7 +254,15 @@ export async function GET(request) {
         city: partnersMap[order.partner_id[0]] || "N/A",
       }));
 
-    return NextResponse.json({ salesOrders: filteredSalesOrders });
+    return NextResponse.json({ salesOrders: filteredSalesOrders }, {
+      status: 200,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "Surrogate-Control": "no-store"
+      }
+    });
   } catch (error) {
     console.error("Error processing GET request:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
