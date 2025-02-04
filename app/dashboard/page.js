@@ -1,5 +1,4 @@
 "use client"; // Esto indica que este es un Client Component
-export const dynamic = "force-dynamic";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";

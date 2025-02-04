@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { AbortController } from "abort-controller";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // Variables de entorno
 const odooUrl = process.env.ODOO_URL;
@@ -154,6 +156,7 @@ const convertUTCtoTijuanaTime = (dateString) => {
 
 // Endpoint principal
 export async function GET(request) {
+  console.log("🚀 [GET] Solicitud recibida a", new Date().toISOString());
   try {
     const sessionId = await authenticate();
     console.log("✅ Autenticación exitosa, Session ID:", sessionId);
