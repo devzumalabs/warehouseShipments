@@ -135,13 +135,14 @@ const fetchData = async (
 
 // Función para convertir UTC a la hora local de Tijuana
 const convertUTCtoTijuanaTime = (dateString) => {
-  const date = new Date(dateString);
+  // Transformamos la cadena a un formato ISO válido interpretado como UTC
+  // Reemplazamos el primer espacio por "T" y le agregamos "Z" al final.
+  const isoString = dateString.replace(" ", "T") + "Z";
+  const date = new Date(isoString);
   if (isNaN(date)) return "Invalid date";
-
-  const tijuanaOffset = -7;
-  const tijuanaTime = new Date(date.getTime() + tijuanaOffset * 60 * 60 * 1000);
-
-  const options = {
+  
+  return new Intl.DateTimeFormat("es-MX", {
+    timeZone: "America/Tijuana",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -149,9 +150,7 @@ const convertUTCtoTijuanaTime = (dateString) => {
     minute: "2-digit",
     second: "2-digit",
     hour12: true,
-  };
-
-  return new Intl.DateTimeFormat("es-MX", options).format(tijuanaTime);
+  }).format(date);
 };
 
 // Endpoint principal

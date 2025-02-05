@@ -1,9 +1,9 @@
-"use client"; // Esto indica que este es un Client Component
+"use client"; 
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Nav from "../components/Nav";
-import Swal from "sweetalert2"; // Importamos SweetAlert2
+import Nav from "../../components/Nav";
+import Swal from "sweetalert2"; 
 import {
   collection,
   query,
@@ -11,10 +11,10 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "../../firebase";
+import { auth, db } from "../../../firebase";
 import { BeatLoader } from "react-spinners";
 
-const Page = () => {
+const Reports = () => {
   const [orders, setOrders] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [localCount, setLocalCount] = useState(0);
@@ -574,4 +574,4 @@ const Page = () => {
   );
 };
 
-export default Page;
+export default Reports;
