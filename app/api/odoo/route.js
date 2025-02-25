@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { AbortController } from "abort-controller";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -20,21 +21,24 @@ const authenticate = async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(`${odooUrl}/web/session/authenticate?_=${Date.now()}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        params: {
-          db: dbName,
-          login: username,
-          password: password,
+    const response = await fetch(
+      `${odooUrl}/web/session/authenticate?_=${Date.now()}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      }),
-      signal: controller.signal,
-    });
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          params: {
+            db: dbName,
+            login: username,
+            password: password,
+          },
+        }),
+        signal: controller.signal,
+      }
+    );
 
     clearTimeout(timeout);
 
@@ -140,7 +144,7 @@ const convertUTCtoTijuanaTime = (dateString) => {
   const isoString = dateString.replace(" ", "T") + "Z";
   const date = new Date(isoString);
   if (isNaN(date)) return "Invalid date";
-  
+
   return new Intl.DateTimeFormat("es-MX", {
     timeZone: "America/Tijuana",
     year: "numeric",
@@ -157,9 +161,11 @@ const convertUTCtoTijuanaTime = (dateString) => {
 export async function GET(request) {
   console.log("🚀 [GET] Solicitud recibida a", new Date().toISOString());
   try {
+    // 1. Autenticación
     const sessionId = await authenticate();
     console.log("✅ Autenticación exitosa, Session ID:", sessionId);
 
+    // 2. Obtener sitios web
     const websiteData = await fetchData(
       sessionId,
       "website",
@@ -167,23 +173,22 @@ export async function GET(request) {
       [["name", "in", ["Pure Form", "Limit-X Nutrition", "APX Energy"]]],
       ["id", "name"]
     );
-
     if (!websiteData || websiteData.length === 0) {
       return NextResponse.json(
         { error: "No websites found." },
         { status: 404 }
       );
     }
-
     const websiteIds = websiteData.map((website) => website.id);
 
+    // 3. Órdenes de venta en estado "sale" o "done"
     const salesOrders = await fetchData(
       sessionId,
       "sale.order",
       "search_read",
       [
         ["website_id", "in", websiteIds],
-        ["state", "in", ["sale", "done"]], // Filtramos por estado de orden de ventas
+        ["state", "in", ["sale", "done"]],
       ],
       [
         "id",
@@ -197,10 +202,8 @@ export async function GET(request) {
       ]
     );
 
-    // Obtener IDs de clientes de todas las órdenes
+    // 4. Obtener la ciudad de los clientes
     const partnerIds = salesOrders.map((order) => order.partner_id[0]);
-
-    // Obtener ciudades en una sola consulta
     const partnersData = await fetchData(
       sessionId,
       "res.partner",
@@ -208,36 +211,53 @@ export async function GET(request) {
       [["id", "in", partnerIds]],
       ["id", "city"]
     );
-
-    // Crear un mapa de ID -> ciudad
     const partnersMap = Object.fromEntries(
       partnersData.map((partner) => [partner.id, partner.city])
     );
 
-    // Obtener todos los pickings en una sola consulta
-    const pickingData = await fetchData(
+    // 5. Obtener los pickings cuyo destino sea "customer"
+    //    Esto filtra realmente los traslados que van al cliente.
+    //    Opcional: agregar ["name", "ilike", "CEDIS/OUT/"] si necesitas esa nomenclatura.
+    const outPickingData = await fetchData(
       sessionId,
       "stock.picking",
       "search_read",
       [
-        ["origin", "in", salesOrders.map((order) => order.name)],
-        ["state", "not in", ["done", "cancel", "draft"]],
+        ["origin", "in", salesOrders.map((o) => o.name)],
+        ["location_dest_id.usage", "=", "customer"]
       ],
-      ["origin", "state"]
+      ["origin", "state", "name", "location_dest_id"]
     );
 
-    // Crear un mapa de órdenes con sus pickings
-    const pickingsMap = {};
-    pickingData.forEach((picking) => {
-      if (!pickingsMap[picking.origin]) {
-        pickingsMap[picking.origin] = [];
+    // 6. Agrupar pickings "out" por orden
+    const outPickingsMap = {};
+    outPickingData.forEach((picking) => {
+      if (!outPickingsMap[picking.origin]) {
+        outPickingsMap[picking.origin] = [];
       }
-      pickingsMap[picking.origin].push(picking);
+      outPickingsMap[picking.origin].push(picking);
     });
 
-    // Filtrar órdenes con picking pendiente
+    // 7. Filtrar las órdenes:
+    //    - Se muestran solo si tienen al menos un picking con destino "customer"
+    //    - Y si ese picking no está en "done" ni "cancel"
     const filteredSalesOrders = salesOrders
-      .filter((order) => pickingsMap[order.name])
+      .filter((order) => {
+        const outPickings = outPickingsMap[order.name] || [];
+
+        // Si no hay pickings con destino "customer", no se muestra
+        if (outPickings.length === 0) {
+          return false;
+        }
+
+        // Revisamos si hay algún picking con destino "customer" no en 'done' ni 'cancel'
+        const anyNotDoneOrCanceled = outPickings.some(
+          (p) => !["done", "cancel"].includes(p.state)
+        );
+
+        // Mostrar la orden solo si hay al menos un picking OUT pendiente
+        return anyNotDoneOrCanceled;
+      })
       .map((order) => ({
         id: order.name,
         id_link: order.id,
@@ -253,15 +273,19 @@ export async function GET(request) {
         city: partnersMap[order.partner_id[0]] || "N/A",
       }));
 
-    return NextResponse.json({ salesOrders: filteredSalesOrders }, {
-      status: 200,
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0",
-        "Surrogate-Control": "no-store"
+    // 8. Respuesta final
+    return NextResponse.json(
+      { salesOrders: filteredSalesOrders },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+          "Surrogate-Control": "no-store",
+        }
       }
-    });
+    );
   } catch (error) {
     console.error("Error processing GET request:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
